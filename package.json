@@ -1,8 +1,8 @@
 {
   "name": "npy-image-preview",
   "displayName": "Numpy Image Preview",
-  "description": "Preview in image and inspect NumPy (.npy) files",
-  "version": "1.0.0",
+  "description": "Preview .npy files in image",
+  "version": "1.0.1",
   "publisher": "Kiameow",
   "repository": {
     "type": "git",
@@ -18,7 +18,7 @@
   ],
   "icon": "images/icon.png",
   "engines": {
-    "vscode": "^1.95.0"
+    "vscode": "^1.92.0"
   },
   "categories": [
     "Other"
@@ -76,7 +76,7 @@
   "devDependencies": {
     "@types/mocha": "^10.0.10",
     "@types/node": "20.x",
-    "@types/vscode": "^1.95.0",
+    "@types/vscode": "^1.92.0",
     "@typescript-eslint/eslint-plugin": "^8.17.0",
     "@typescript-eslint/parser": "^8.17.0",
     "@vscode/test-cli": "^0.0.10",
