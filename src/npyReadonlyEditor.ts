@@ -46,8 +46,6 @@ export class npyReadonlyEditor implements vscode.CustomReadonlyEditorProvider {
             arrayData = null;
         }
 
-        console.log(JSON.stringify(arrayData));
-
         // Always attempt to send data, even if cached or newly parsed
         webviewPanel.webview.onDidReceiveMessage(message => {
             if (message.type === 'ready') {
