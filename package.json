@@ -2,7 +2,7 @@
   "name": "npy-image-preview",
   "displayName": "Numpy Image Preview",
   "description": "Preview .npy files in image",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "publisher": "Kiameow",
   "repository": {
     "type": "git",
@@ -23,7 +23,9 @@
   "categories": [
     "Other"
   ],
-  "activationEvents": [],
+  "activationEvents": [
+    "onCustomEditor:npy-image-preview.preview"
+  ],
   "main": "./dist/extension.js",
   "contributes": {
     "customEditors": [
@@ -45,11 +47,6 @@
       }
     ],
     "menus": {
-      "issue/reporter": [
-        {
-          "command": "npy-image-preview.preview"
-        }
-      ],
       "explorer/context": [
         {
           "when": "resourceExtname == .npy",
