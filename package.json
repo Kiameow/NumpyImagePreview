@@ -26,7 +26,7 @@
     ],
     "commands": [
       {
-        "command": "npyViewer.npyPreview",
+        "command": "npyViewer.preview",
         "title": "View NPY File"
       }
     ],
@@ -34,13 +34,6 @@
       "issue/reporter": [
         {
           "command": "npyViewer.preview"
-        }
-      ],
-      "explorer/context": [
-        {
-          "command": "npyViewer.preview",
-          "when": "resourceExtname == '.npy'",
-          "group": "navigation"
         }
       ]
     }
