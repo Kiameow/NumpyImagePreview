@@ -1,6 +1,6 @@
 {
-  "name": "npy-preview",
-  "displayName": "Npy Preview",
+  "name": "npy-image-preview",
+  "displayName": "Numpy Image Preview",
   "description": "Preview in image and inspect NumPy (.npy) files",
   "version": "1.0.0",
   "publisher": "Kiameow",
@@ -12,7 +12,7 @@
   "keywords": [
     "npy",
     "numpy",
-    "data",
+    "image",
     "preview",
     "viewer"
   ],
@@ -28,8 +28,8 @@
   "contributes": {
     "customEditors": [
       {
-        "viewType": "npy-preview.preview",
-        "displayName": "Npy Preview",
+        "viewType": "npy-image-preview.preview",
+        "displayName": "Numpy Image Preview",
         "selector": [
           {
             "filenamePattern": "*.npy"
@@ -40,20 +40,20 @@
     ],
     "commands": [
       {
-        "command": "npy-preview.preview",
+        "command": "npy-image-preview.preview",
         "title": "Preview Npy File"
       }
     ],
     "menus": {
       "issue/reporter": [
         {
-          "command": "npy-preview.preview"
+          "command": "npy-image-preview.preview"
         }
       ],
       "explorer/context": [
         {
           "when": "resourceExtname == .npy",
-          "command": "npy-preview.preview",
+          "command": "npy-image-preview.preview",
           "group": "navigation"
         }
       ]

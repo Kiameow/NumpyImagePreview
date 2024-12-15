@@ -1,71 +1,32 @@
-# npyviewer README
+# Npy Preview
 
-This is the README for your extension "npyviewer". After writing up a brief description, we recommend including the following sections.
+Npy Image Preview is a Visual Studio Code extension that allows you to preview in image and inspect NumPy (.npy) data files directly within the VS Code environment.
 
 ## Features
 
-Describe specific features of your extension including screenshots of your extension in action. Image paths are relative to this README file.
+- **Npy File Preview**: Open any .npy file in your workspace and the extension will display the file's metadata and visualize the data as both an RGBA image and a grayscale image.
+- **Metadata Display**: The extension shows the shape, data type, and byte order of the NumPy array stored in the .npy file.
+- **Flexible Visualization**: Switch between RGBA and grayscale views to better understand the data contained in the .npy file.
+- **Seamless Integration**: The custom editor for .npy files is tightly integrated into the VS Code interface, providing a smooth and efficient workflow.
 
-For example if there is an image subfolder under your extension project workspace:
+## Installation
 
-\!\[feature X\]\(images/feature-x.png\)
+1. Open Visual Studio Code.
+2. Go to the Extensions view (Ctrl+Shift+X or Cmd+Shift+X).
+3. Search for "NPY Viewer" and click "Install".
+4. Once installed, the extension will automatically activate when you open a .npy file in your workspace.
 
-> Tip: Many popular extensions utilize animations. This is an excellent way to show off your extension! We recommend short, focused animations that are easy to follow.
+## Usage
 
-## Requirements
+1. Open a .npy file in your VS Code workspace.
+2. The NPY Viewer custom editor will automatically open, displaying the file's metadata and data visualization.
+3. Use the toolbar buttons to switch between the RGBA and grayscale views.
+4. Hover over the data visualization to see the value of individual pixels.
 
-If you have any requirements or dependencies, add a section describing those and how to install and configure them.
+## Contributing
 
-## Extension Settings
+We welcome contributions to the NPY Viewer extension! If you encounter any issues or have ideas for new features, please feel free to open an issue or submit a pull request on the [project's GitHub repository](https://github.com/your-username/npy-viewer).
 
-Include if your extension adds any VS Code settings through the `contributes.configuration` extension point.
+## License
 
-For example:
-
-This extension contributes the following settings:
-
-* `myExtension.enable`: Enable/disable this extension.
-* `myExtension.thing`: Set to `blah` to do something.
-
-## Known Issues
-
-Calling out known issues can help limit users opening duplicate issues against your extension.
-
-## Release Notes
-
-Users appreciate release notes as you update your extension.
-
-### 1.0.0
-
-Initial release of ...
-
-### 1.0.1
-
-Fixed issue #.
-
-### 1.1.0
-
-Added features X, Y, and Z.
-
----
-
-## Following extension guidelines
-
-Ensure that you've read through the extensions guidelines and follow the best practices for creating your extension.
-
-* [Extension Guidelines](https://code.visualstudio.com/api/references/extension-guidelines)
-
-## Working with Markdown
-
-You can author your README using Visual Studio Code. Here are some useful editor keyboard shortcuts:
-
-* Split the editor (`Cmd+\` on macOS or `Ctrl+\` on Windows and Linux).
-* Toggle preview (`Shift+Cmd+V` on macOS or `Shift+Ctrl+V` on Windows and Linux).
-* Press `Ctrl+Space` (Windows, Linux, macOS) to see a list of Markdown snippets.
-
-## For more information
-
-* [Visual Studio Code's Markdown Support](http://code.visualstudio.com/docs/languages/markdown)
-* [Markdown Syntax Reference](https://help.github.com/articles/markdown-basics/)
-
-**Enjoy!**
+This extension is licensed under the [MIT License](LICENSE).

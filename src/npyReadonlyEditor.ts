@@ -8,7 +8,7 @@ export class npyReadonlyEditor implements vscode.CustomReadonlyEditorProvider {
 		return providerRegistration;
 	}
 
-    private static readonly viewType = 'npy-preview.preview';
+    private static readonly viewType = 'npy-image-preview.preview';
 
     constructor(
 		private readonly context: vscode.ExtensionContext
