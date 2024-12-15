@@ -8,7 +8,7 @@ export class npyReadonlyEditor implements vscode.CustomReadonlyEditorProvider {
 		return providerRegistration;
 	}
 
-    private static readonly viewType = 'npyViewer.preview';
+    private static readonly viewType = 'npy-preview.preview';
 
     constructor(
 		private readonly context: vscode.ExtensionContext
@@ -70,10 +70,10 @@ export class npyReadonlyEditor implements vscode.CustomReadonlyEditorProvider {
     private getHtmlForWebview(webview: vscode.Webview, uri: vscode.Uri): string {
         // Local path to script for the webview
         const scriptUri = webview.asWebviewUri(vscode.Uri.joinPath(
-            this.context.extensionUri, 'media', 'npyViewer.js'));
+            this.context.extensionUri, 'media', 'npyPreview.js'));
 
         const styleUri = webview.asWebviewUri(vscode.Uri.joinPath(
-            this.context.extensionUri, 'media', 'npyViewer.css'));
+            this.context.extensionUri, 'media', 'npyPreview.css'));
 
         // Use a nonce to only allow specific scripts
         const nonce = this.getNonce();
@@ -89,11 +89,11 @@ export class npyReadonlyEditor implements vscode.CustomReadonlyEditorProvider {
                                style-src ${webview.cspSource};">
                 <meta name="viewport" content="width=device-width, initial-scale=1.0">
                 <link href="${styleUri}" rel="stylesheet" />
-                <title>NumPy Array Viewer</title>
+                <title>NumPy Image Preview</title>
             </head>
             <body>
                 <div id="array-container">
-                    <h2>NumPy Array Viewer</h2>
+                    <h2>NumPy Image Preview</h2>
                     <pre id="array-data">Loading npy data...</pre>
                 </div>
                 

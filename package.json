@@ -1,8 +1,22 @@
 {
-  "name": "npyviewer",
-  "displayName": "npyViewer",
-  "description": "",
-  "version": "0.0.1",
+  "name": "npy-preview",
+  "displayName": "Npy Preview",
+  "description": "Preview in image and inspect NumPy (.npy) files",
+  "version": "1.0.0",
+  "publisher": "Kiameow",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Kiameow/npyPreview.git"
+  },
+  "license": "MIT",
+  "keywords": [
+    "npy",
+    "numpy",
+    "data",
+    "preview",
+    "viewer"
+  ],
+  "icon": "images/icon.png",
   "engines": {
     "vscode": "^1.95.0"
   },
@@ -14,8 +28,8 @@
   "contributes": {
     "customEditors": [
       {
-        "viewType": "npyViewer.preview",
-        "displayName": "npy Viewer",
+        "viewType": "npy-preview.preview",
+        "displayName": "Npy Preview",
         "selector": [
           {
             "filenamePattern": "*.npy"
@@ -26,14 +40,21 @@
     ],
     "commands": [
       {
-        "command": "npyViewer.preview",
-        "title": "View NPY File"
+        "command": "npy-preview.preview",
+        "title": "Preview Npy File"
       }
     ],
     "menus": {
       "issue/reporter": [
         {
-          "command": "npyViewer.preview"
+          "command": "npy-preview.preview"
+        }
+      ],
+      "explorer/context": [
+        {
+          "when": "resourceExtname == .npy",
+          "command": "npy-preview.preview",
+          "group": "navigation"
         }
       ]
     }

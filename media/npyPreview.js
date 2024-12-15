@@ -61,7 +61,6 @@
     function createImageFromArray(arrayData) {
         const data = arrayData.data;
         const shape = arrayData.shape;
-        console.log(JSON.stringify(shape));
 
         // Check if array looks like an image
         if (shape.length === 2) {
