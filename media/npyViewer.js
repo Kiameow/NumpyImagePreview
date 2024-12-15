@@ -40,7 +40,7 @@
         const metadataDiv = document.createElement('div');
         metadataDiv.innerHTML = `
             <h3>Metadata</h3>
-            <div id='metadata'> 
+            <div class='info-section'> 
                 <p>Data Type: ${arrayData.dtype} ;</p>
                 <p>Shape: ${JSON.stringify(arrayData.shape)} ;</p>
             </div>
@@ -76,50 +76,55 @@
     }
 
     function renderGrayscaleImage(data, width, height) {
-        const canvas = document.createElement('canvas');
-        canvas.width = width;
-        canvas.height = height;
-
+        const mainCanvas = document.createElement('canvas');
+        mainCanvas.width = width;
+        mainCanvas.height = height;
+    
         // Add styling to make canvas responsive and full-width
-        canvas.style.width = '100%';
-        canvas.style.maxWidth = '100%';
-        canvas.style.height = 'auto';
-        canvas.style.display = 'block';
-
-        const ctx = canvas.getContext('2d');
-        const imageData = ctx.createImageData(width, height);
-        
-        // Flatten data if it's nested
-        const flatData = Array.isArray(data[0]) ? data.flat() : data;
+        mainCanvas.style.width = '100%';
+        mainCanvas.style.height = 'auto';
+        mainCanvas.style.display = 'inline-block';
+        mainCanvas.style.verticalAlign = 'top';
+    
+        const mainCtx = mainCanvas.getContext('2d');
+        const imageData = mainCtx.createImageData(width, height);
+    
         let normalizedData = [];
-
-        const cover = Math.max(...flatData) - Math.min(...flatData);
-        console.log(cover);
+    
+        const maxVal = Math.max(...data);
+        const minVal = Math.min(...data);
+        const cover = maxVal - minVal;
         if (cover > 0.00001) {
-            normalizedData = flatData.map((ele, idx) => {
+            normalizedData = data.map((ele, idx) => {
                 return ele / cover * 255;
             });
         }
-
+    
         for (let i = 0; i < height; i++) {
             for (let j = 0; j < width; j++) {
                 const index = i * width + j;
-                const value = normalizedData[index]; 
-                
+                const value = normalizedData[index];
+    
                 imageData.data[index * 4] = value;     // R
                 imageData.data[index * 4 + 1] = value; // G
                 imageData.data[index * 4 + 2] = value; // B
                 imageData.data[index * 4 + 3] = 255;   // A
             }
         }
-
-        ctx.putImageData(imageData, 0, 0);
-        
-        // Add some styling and title
+    
+        mainCtx.putImageData(imageData, 0, 0);
+    
+        // Create a wrapper div and append the canvases
         const wrapper = document.createElement('div');
-        wrapper.innerHTML = '<h3>Grayscale Image Visualization</h3>';
-        wrapper.appendChild(canvas);
-        
+        wrapper.innerHTML = `
+            <h3>Grayscale Image Visualization</h3>
+            <div class="info-section">
+                <p>MaxVal = ${maxVal.toFixed(5)} ;</p>     
+                <p>minVal = ${minVal.toFixed(5)} ;</p>
+            </div>
+        `;
+        wrapper.appendChild(mainCanvas);
+    
         return wrapper;
     }
 
@@ -127,16 +132,19 @@
         const canvas = document.createElement('canvas');
         canvas.width = width;
         canvas.height = height;
+
+        canvas.style.width = '100%';
+        canvas.style.height = 'auto';
+        canvas.style.display = 'inline-block';
+        canvas.style.verticalAlign = 'top';
+
         const ctx = canvas.getContext('2d');
         const imageData = ctx.createImageData(width, height);
-        
-        // Flatten nested arrays if needed
-        const flatData = Array.isArray(data[0]) ? data.flat() : data;
 
         // Separate channels
         const channelData = [];
         for (let c = 0; c < channels; c++) {
-            const channel = flatData.filter((_, idx) => idx % channels === c);
+            const channel = data.filter((_, idx) => idx % channels === c);
             channelData.push(channel);
         }
 
