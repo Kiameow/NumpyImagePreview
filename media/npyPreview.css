@@ -3,7 +3,6 @@ body {
     padding: 20px;
     max-width: 800px;
     margin: 0 auto;
-    color: black;
 }
 
 h3 {
@@ -18,13 +17,13 @@ p {
     margin-bottom: 0.5rem;
 }
 
-#array-container {
-    background-color: #f4f4f4;
+#main {
+    background-color: var(--vscode-editor-background);
     border-radius: 5px;
     padding: 15px;
 }
 
-#array-data {
+#loading {
     white-space: pre-wrap;
     word-wrap: break-word;
     font-family: 'Courier New', Courier, monospace;
@@ -35,4 +34,12 @@ p {
     display: flex;
     justify-content: flex-start;
     gap: 5px;
+}
+
+.numpy-canvas {
+    border: 2px dashed var(--vscode-editor-foreground);
+}
+
+#color-numpy-canvas {
+    margin-top: 0.2rem;
 }

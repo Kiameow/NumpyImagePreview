@@ -33,11 +33,11 @@
     
 
     function renderArrayData(arrayData) {
-        const container = document.getElementById('array-container');
-        container.innerHTML = ''; // Clear previous content
-
+        const container = document.getElementById('main');
+        
         // Create metadata display
         const metadataDiv = document.createElement('div');
+        metadataDiv.id = 'numpy-metadata';
         metadataDiv.innerHTML = `
             <h3>Metadata</h3>
             <div class='info-section'> 
@@ -45,6 +45,7 @@
                 <p>Shape: ${JSON.stringify(arrayData.shape)} ;</p>
             </div>
         `;
+        container.innerHTML = ''; // Clear previous content
         container.appendChild(metadataDiv);
 
         // Attempt to render as image
@@ -76,6 +77,7 @@
 
     function renderGrayscaleImage(data, width, height) {
         const mainCanvas = document.createElement('canvas');
+        mainCanvas.classList.add('numpy-canvas');
         mainCanvas.width = width;
         mainCanvas.height = height;
     
@@ -115,6 +117,7 @@
     
         // Create a wrapper div and append the canvases
         const wrapper = document.createElement('div');
+        wrapper.id = 'numpy-wrapper';
         wrapper.innerHTML = `
             <h3>Grayscale Image Visualization</h3>
             <div class="info-section">
@@ -129,6 +132,8 @@
 
     function renderColorImage(data, width, height, channels) {
         const canvas = document.createElement('canvas');
+        canvas.id = 'color-numpy-canvas';
+        canvas.classList.add('numpy-canvas');
         canvas.width = width;
         canvas.height = height;
 
@@ -170,7 +175,7 @@
     }
 
     function displayError(message) {
-        const container = document.getElementById('array-container');
+        const container = document.getElementById('main');
         container.innerHTML = `
             <div style="color: red; font-weight: bold;">
                 Error: ${message}

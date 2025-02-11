@@ -68,6 +68,27 @@ export class npyReadonlyEditor implements vscode.CustomReadonlyEditorProvider {
      * Generate HTML for the webview
      */
     private getHtmlForWebview(webview: vscode.Webview, uri: vscode.Uri): string {
+        // Get propriate font color & border color according to user theme 
+        let fontColor;
+        const theme = vscode.window.activeColorTheme;
+        switch(theme.kind) {
+            case vscode.ColorThemeKind.Dark:
+                fontColor = '#ffffff';
+                break;
+            case vscode.ColorThemeKind.Light:
+                fontColor = '#000000';
+                break;
+            case vscode.ColorThemeKind.HighContrast:
+                fontColor = '#ffffff';
+                break;
+            case vscode.ColorThemeKind.HighContrastLight:
+                fontColor = '#000000';
+                break;
+            default:
+                fontColor = '#000000';
+        }
+
+	    
         // Local path to script for the webview
         const scriptUri = webview.asWebviewUri(vscode.Uri.joinPath(
             this.context.extensionUri, 'media', 'npyPreview.js'));
@@ -80,7 +101,7 @@ export class npyReadonlyEditor implements vscode.CustomReadonlyEditorProvider {
 
         return `
             <!DOCTYPE html>
-            <html lang="en">
+            <html lang="en" style="color:${fontColor}">
             <head>
                 <meta charset="UTF-8">
                 <meta http-equiv="Content-Security-Policy" 
@@ -92,9 +113,9 @@ export class npyReadonlyEditor implements vscode.CustomReadonlyEditorProvider {
                 <title>NumPy Image Preview</title>
             </head>
             <body>
-                <div id="array-container">
+                <div id="main">
                     <h2>NumPy Image Preview</h2>
-                    <pre id="array-data">Loading npy data...</pre>
+                    <pre class="loading">Loading npy data...</pre>
                 </div>
                 
                 <script nonce="${nonce}" src="${scriptUri}"></script>
