@@ -1,10 +1,9 @@
 # Change Log
 
-All notable changes to the "npyviewer" extension will be documented in this file.
-
-Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
+All notable changes to the "Numpy Image Preview" extension will be documented in this file.
 
 ## [1.0.3] - 2025-02-11
+
 ### Changed
 - adjust previewer color according to user theme 
 
@@ -18,13 +17,13 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 ## [1.0.1] - 2024-12-15
 
 ### Added
+
 - LICENSE
 
 ### Changed
-- downgrade the vscode package version to make it compatiable with lower version
 
+- downgrade the vscode package version to make it compatiable with lower version
 
 ## [1.0.0] - 2024-12-15
 
-### Added
 - initial release
