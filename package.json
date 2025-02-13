@@ -2,7 +2,7 @@
   "name": "npy-image-preview",
   "displayName": "Numpy Image Preview",
   "description": "Preview .npy files in image",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "publisher": "Kiameow",
   "repository": {
     "type": "git",

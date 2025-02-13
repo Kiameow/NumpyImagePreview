@@ -2,6 +2,13 @@
 
 All notable changes to the "Numpy Image Preview" extension will be documented in this file.
 
+## [1.0.5] - 2025-02-13
+
+### Changed
+- restrict the canvas height
+- when context in canvas get resized, it shows in pixelated way instead of interploted
+
+
 ## [1.0.4] - 2025-02-13
 
 ### Changed
