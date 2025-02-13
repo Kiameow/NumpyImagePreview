@@ -3,17 +3,16 @@
     const vscode = acquireVsCodeApi();
 
     // Always send ready message, but handle potential race conditions
-    function sendReadyMessage() {
-        console.log("Sending ready message");
-        vscode.postMessage({ type: 'ready' });
+    function sendMessage(type, info=null) {
+        vscode.postMessage({ type: type, info: info });
     }
 
     // If document is already loaded, send ready immediately
     if (document.readyState === 'complete') {
-        sendReadyMessage();
+        sendMessage('ready');
     } else {
         // Otherwise, wait for document to load
-        window.addEventListener('load', sendReadyMessage);
+        window.addEventListener('load', sendMessage('ready'));
     }
 
     window.addEventListener('message', event => {
@@ -50,32 +49,43 @@
 
         // Attempt to render as image
         try {
-            const imageCanvas = createImageFromArray(arrayData);
-            if (imageCanvas) {
-                container.appendChild(imageCanvas);
+            const imageCanvasMessage = createImageFromArray(arrayData);
+            
+            if (imageCanvasMessage.element) {
+                container.appendChild(imageCanvasMessage.element);
+            } else {
+                const errorBlock = document.createElement('div');
+                errorBlock.innerHTML = imageCanvasMessage.info;
+                container.appendChild(errorBlock);
             }
         } catch (error) {
-            console.error('Image rendering error:', error);
+            sendMessage('error', 'Image rendering error: ' + error.message);
         }
     }
 
     function createImageFromArray(arrayData) {
         const data = arrayData.data;
-        const shape = arrayData.shape;
+        let shape = arrayData.shape;
+        shape = shape.filter(i => i !== 1);
+        const slen = shape.length;
 
-        // Check if array looks like an image
-        if (shape.length === 2) {
-            // Grayscale image
-            return renderGrayscaleImage(data, shape[1], shape[0]);
-        } else if (shape.length === 3 && (shape[2] === 3 || shape[2] === 4)) {
+        // Channel-last case (common plt case)
+        if (slen === 2) {
+            // Grayscale image (HW)
+            return renderGrayscaleImage(data, shape[0], shape[1]);
+        } else if (slen === 3 && (shape[2] === 3 || shape[2] === 4)) {
             // Color image (RGB or RGBA)
-            return renderColorImage(data, shape[1], shape[0], shape[2]);
+            return renderColorImage(data, shape[0], shape[1], shape[2]);
         }
 
-        return null;
+        const message = {
+            info: "default fallback, if you believe your npy format is correct, please report this issue attached with your npy detail",
+            element: null
+        };
+        return message;
     }
 
-    function renderGrayscaleImage(data, width, height) {
+    function renderGrayscaleImage(data, height, width) {
         const mainCanvas = document.createElement('canvas');
         mainCanvas.classList.add('numpy-canvas');
         mainCanvas.width = width;
@@ -126,11 +136,15 @@
             </div>
         `;
         wrapper.appendChild(mainCanvas);
-    
-        return wrapper;
+        
+        const message = {
+            info: "success",
+            element: wrapper
+        };
+        return message;
     }
 
-    function renderColorImage(data, width, height, channels) {
+    function renderColorImage(data, height, width, channels) {
         const canvas = document.createElement('canvas');
         canvas.id = 'color-numpy-canvas';
         canvas.classList.add('numpy-canvas');
@@ -171,7 +185,11 @@
         wrapper.innerHTML = '<h3>Color Image Visualization</h3>';
         wrapper.appendChild(canvas);
         
-        return wrapper;
+        const message = {
+            info: "success",
+            element: wrapper
+        };
+        return message;
     }
 
     function displayError(message) {

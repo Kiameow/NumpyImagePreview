@@ -60,6 +60,8 @@ export class npyReadonlyEditor implements vscode.CustomReadonlyEditorProvider {
                         message: 'Failed to parse NPY file'
                     });
                 }
+            } else {
+                console.log(`[${message.type}] ${message.info}`);
             }
         });
     }
