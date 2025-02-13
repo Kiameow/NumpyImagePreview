@@ -41,8 +41,8 @@
         metadataDiv.innerHTML = `
             <h3>Metadata</h3>
             <div class='info-section'> 
-                <p>Data Type: ${arrayData.dtype} ;</p>
-                <p>Shape: ${JSON.stringify(arrayData.shape)} ;</p>
+                <p>Data Type: ${arrayData.dtype}</p>
+                <p>Shape: ${JSON.stringify(arrayData.shape)}</p>
             </div>
         `;
         container.innerHTML = ''; // Clear previous content
@@ -121,8 +121,8 @@
         wrapper.innerHTML = `
             <h3>Grayscale Image Visualization</h3>
             <div class="info-section">
-                <p>MaxVal = ${maxVal.toFixed(5)} ;</p>     
-                <p>minVal = ${minVal.toFixed(5)} ;</p>
+                <p>MaxVal = ${maxVal.toFixed(5)}</p>     
+                <p>minVal = ${minVal.toFixed(5)}</p>
             </div>
         `;
         wrapper.appendChild(mainCanvas);
