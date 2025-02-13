@@ -2,6 +2,14 @@
 
 All notable changes to the "Numpy Image Preview" extension will be documented in this file.
 
+## [1.0.4] - 2025-02-13
+
+### Changed
+- more tight layout
+
+### Added
+- support redundant dimension 
+
 ## [1.0.3] - 2025-02-11
 
 ### Changed
