@@ -43,7 +43,9 @@ p {
 
 .numpy-canvas {
     border: 2px dashed var(--vscode-editor-foreground);
-    max-width: 500px;
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
 }
 
 #color-numpy-canvas {

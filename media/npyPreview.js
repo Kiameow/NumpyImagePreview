@@ -72,10 +72,10 @@
         // Channel-last case (common plt case)
         if (slen === 2) {
             // Grayscale image (HW)
-            return renderGrayscaleImage(data, shape[0], shape[1]);
+            return renderGrayscaleImage(data, shape[0], shape[1], 500, 500);
         } else if (slen === 3 && (shape[2] === 3 || shape[2] === 4)) {
             // Color image (RGB or RGBA)
-            return renderColorImage(data, shape[0], shape[1], shape[2]);
+            return renderColorImage(data, shape[0], shape[1], shape[2], 500, 500);
         }
 
         const message = {
@@ -85,17 +85,23 @@
         return message;
     }
 
-    function renderGrayscaleImage(data, height, width) {
+    function renderGrayscaleImage(data, height, width, maxHeight, maxWidth) {
+        const scale = Math.min(
+            maxWidth / width,
+            maxHeight / height
+        );
+        
         const mainCanvas = document.createElement('canvas');
         mainCanvas.classList.add('numpy-canvas');
         mainCanvas.width = width;
         mainCanvas.height = height;
     
         // Add styling to make canvas responsive and full-width
-        mainCanvas.style.width = '100%';
-        mainCanvas.style.height = 'auto';
+        mainCanvas.style.width = `${width * scale}px`;
+        mainCanvas.style.height = `${height * scale}px`;
         mainCanvas.style.display = 'inline-block';
         mainCanvas.style.verticalAlign = 'top';
+        mainCanvas.style.imageRendering = 'pixelated';
     
         const mainCtx = mainCanvas.getContext('2d');
         const imageData = mainCtx.createImageData(width, height);
@@ -144,17 +150,22 @@
         return message;
     }
 
-    function renderColorImage(data, height, width, channels) {
+    function renderColorImage(data, height, width, channels, maxHeight, maxWidth) {
+        const scale = Math.min(
+            maxWidth / width,
+            maxHeight / height
+        );
         const canvas = document.createElement('canvas');
         canvas.id = 'color-numpy-canvas';
         canvas.classList.add('numpy-canvas');
         canvas.width = width;
         canvas.height = height;
 
-        canvas.style.width = '100%';
-        canvas.style.height = 'auto';
+        canvas.style.width = `${width * scale}px`;
+        canvas.style.height = `${height * scale}px`;
         canvas.style.display = 'inline-block';
         canvas.style.verticalAlign = 'top';
+        canvas.style.imageRendering = 'pixelated';
 
         const ctx = canvas.getContext('2d');
         const imageData = ctx.createImageData(width, height);
