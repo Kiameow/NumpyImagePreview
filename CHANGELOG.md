@@ -2,6 +2,15 @@
 
 All notable changes to the "Numpy Image Preview" extension will be documented in this file.
 
+## [1.0.5] - 2025-07-29
+
+### Added
+- Batch data supoort
+
+### Fixed
+- Color image with float datatype cannot correctly be visualized
+
+
 ## [1.0.5] - 2025-02-13
 
 ### Changed

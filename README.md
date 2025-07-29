@@ -6,6 +6,7 @@ Numpy Image Preview is a Visual Studio Code extension that allows you to preview
 
 - **Npy File Preview**: Open any .npy file in your workspace and the extension will display the file's metadata and visualize the data either an RGBA image or a grayscale image.
 - **Metadata Display**: The extension shows the shape, data type, and value bound of the NumPy array stored in the .npy file.
+- **Batch Data Support**: You can easily slide the index bar to check any single image in your batched data.
 
 ## Usage
 
