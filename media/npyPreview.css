@@ -24,9 +24,9 @@ p {
 
 #main {
     /* background-color: var(--vscode-editor-background); */
-    border-radius: 5px;
     padding: 15px;
 }
+
 
 #loading {
     white-space: pre-wrap;
@@ -50,4 +50,76 @@ p {
 
 #color-numpy-canvas {
     margin-top: 0.2rem;
+}
+
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 8px;
+  background: var(--vscode-editorGroup-border);
+  outline: none;
+  border-radius: 5px;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--vscode-button-background);
+  cursor: pointer;
+  margin-top: -4px;
+  box-shadow: 1px 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+input[type="range"]::-webkit-slider-thumb:hover {
+  background: var(--vscode-button-hoverBackground);
+}
+
+input[type="range"]::-webkit-slider-runnable-track {
+  background: var(--vscode-editorGroup-border);
+  border-radius: 5px;
+  height: 8px;
+}
+
+input[type="range"]::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--vscode-button-background);
+  cursor: pointer;
+  box-shadow: 1px 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+input[type="range"]::-moz-range-track {
+  background: var(--vscode-editorGroup-border);
+  border-radius: 5px;
+  height: 8px;
+}
+
+input[type="range"]::-ms-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--vscode-button-background);
+  cursor: pointer;
+  box-shadow: 1px 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+input[type="range"]::-ms-track {
+  background: var(--vscode-editorGroup-border);
+  border-radius: 5px;
+  height: 8px;
+  color: transparent;
+}
+
+/* Styling the number input to match VS Code's look */
+#index-input {
+    width: 60px;
+    background-color: var(--vscode-input-background);
+    color: var(--vscode-input-foreground);
+    border: 1px solid var(--vscode-input-border);
+    border-radius: 2px;
+    text-align: center;
 }
