@@ -50,9 +50,12 @@ export class npyReadonlyEditor implements vscode.CustomReadonlyEditorProvider {
         webviewPanel.webview.onDidReceiveMessage(message => {
             if (message.type === 'ready') {
                 if (arrayData) {
+                    const savedLayout = this.context.globalState.get<string>('npy-preview.preferredLayout');
+
                     webviewPanel.webview.postMessage({
                         type: 'arrayData',
-                        data: arrayData
+                        data: arrayData,
+                        preferredLayout: savedLayout
                     });
                 } else {
                     webviewPanel.webview.postMessage({
@@ -60,7 +63,11 @@ export class npyReadonlyEditor implements vscode.CustomReadonlyEditorProvider {
                         message: 'Failed to parse NPY file'
                     });
                 }
-            } else {
+            } 
+            else if (message.type === 'updateLayout') {
+                this.context.globalState.update('npy-preview.preferredLayout', message.layout);
+            } 
+            else {
                 console.log(`[${message.type}] ${message.info}`);
             }
         });

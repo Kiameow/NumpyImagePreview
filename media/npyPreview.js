@@ -3,9 +3,10 @@
     const vscode = acquireVsCodeApi();
 
     // Global State
+    const previousState = vscode.getState() || {};
     let globalArrayData = null;
-    let currentLayout = ''; // e.g., 'HWC', 'CHW', 'BCHW'
-    let currentBatchIndex = 0;
+    let currentLayout = previousState.layout || ''; 
+    let currentBatchIndex = previousState.batchIndex || 0;
 
     // Always send ready message, but handle potential race conditions
     function sendMessage(type, info=null) {
@@ -29,6 +30,14 @@
             case 'arrayData':
                 globalArrayData = message.data;
                 // renderArrayData(message.data);
+                if (!currentLayout) {
+                    if (message.preferredLayout) {
+                        currentLayout = message.preferredLayout;
+                    } else {
+                        currentLayout = guessLayout(globalArrayData.shape);
+                    }
+                }
+
                 initViewer(globalArrayData);
                 break;
             case 'error':
@@ -154,6 +163,11 @@
         document.getElementById('layout-selector').addEventListener('change', (e) => {
             currentLayout = e.target.value;
             currentBatchIndex = 0; // Reset batch index on layout change
+
+            vscode.setState({ layout: currentLayout, batchIndex: currentBatchIndex });
+
+            vscode.postMessage({ type: 'updateLayout', layout: currentLayout });
+
             renderContent();
         });
 
@@ -215,6 +229,7 @@
 
         const updateBatch = (idx) => {
             currentBatchIndex = idx;
+            vscode.setState({ layout: currentLayout, batchIndex: currentBatchIndex });
             canvasWrapper.innerHTML = '';
             // Pass the batch index to the renderer
             renderCanvas(canvasWrapper, globalArrayData, currentLayout, currentBatchIndex, dims);
