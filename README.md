@@ -17,6 +17,8 @@ Open any .npy file in your VS Code workspace, then you will see the image view o
 
 We welcome contributions to the **Numpy Image Viewer** extension! If you encounter any issues or have ideas for new features, please feel free to open an issue or submit a pull request on the [project's GitHub repository](https://github.com/Kiameow/NumpyImagePreview).
 
+If you find this extension helpful, please share it or star the repository, which means a lot to me. Thanks.
+
 ## License
 
 This extension is licensed under the [MIT License](LICENSE).
