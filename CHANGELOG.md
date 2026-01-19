@@ -2,13 +2,19 @@
 
 All notable changes to the "Numpy Image Preview" extension will be documented in this file.
 
-## [1.0.5] - 2025-07-29
+## [1.0.7] - 2026-01-19
+### Added
+- extension now can remember preferred layout option to guarantee consistent experience
+- add data layout option for more general usage
+
+
+## [1.0.6] - 2025-07-29
 
 ### Added
-- Batch data supoort
+- batch data supoort
 
 ### Fixed
-- Color image with float datatype cannot correctly be visualized
+- color image with float datatype cannot correctly be visualized
 
 
 ## [1.0.5] - 2025-02-13
