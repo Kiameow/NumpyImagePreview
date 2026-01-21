@@ -36,10 +36,25 @@ p {
   margin-bottom: 10px;
 }
 
+.info-and-control-section {
+  width: 100%;
+}
+
 .info-section {
-    display: flex;
-    justify-content: flex-start;
-    gap: 5px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.control-section {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.meta-row {
+  display: flex;
+  gap: 4px;
 }
 
 .canvas-wrapper {

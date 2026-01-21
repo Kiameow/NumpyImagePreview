@@ -7,6 +7,8 @@
     let globalArrayData = null;
     let currentLayout = previousState.layout || ''; 
     let currentBatchIndex = previousState.batchIndex || 0;
+    let currentDisplayMode = previousState.displayMode || 'auto'; // 'auto', 'rgb', 'gray'
+    let currentChannelStart = previousState.channelStart || 0;
 
     // Always send ready message, but handle potential race conditions
     function sendMessage(type, info=null) {
@@ -126,6 +128,15 @@
             currentLayout = guessLayout(shape) || possibleLayouts[0];
         }
 
+        // 1. 在渲染 UI 前，先计算当前的维度信息，获取 Channel 总数
+        const dims = parseDimensions(shape, currentLayout);
+        const maxChannelIndex = Math.max(0, dims.C - 1);
+
+        // 2. 安全检查：如果之前的记录的下标超过了现在的最大值，重置为 0
+        if (currentChannelStart > maxChannelIndex) {
+            currentChannelStart = 0;
+        }
+
         // 3. Render Skeleton (Metadata + Controls)
         const container = document.getElementById('main');
         container.innerHTML = ''; // Clear loading
@@ -139,39 +150,105 @@
             `<option value="${l}" ${l === currentLayout ? 'selected' : ''}>${l}</option>`
         ).join('');
 
+        const showChannelControls = true;
+
         metadataDiv.innerHTML = `
             <h3>Metadata & Settings</h3>
-            <div class='info-section'> 
-                <div class="meta-row"><span class="label">Data Type:</span> <span>${arrayData.dtype}</span></div>
-                <div class="meta-row"><span class="label">Shape:</span> <span>${JSON.stringify(shape)}</span></div>
-                <div class="meta-row control-row">
-                    <span class="label">Data Layout:</span> 
-                    <select id="layout-selector">
-                        ${optionsHtml}
-                    </select>
+            <div class='info-and-control-section'> 
+                <div class='info-section'>
+                    <div class="meta-row"><span class="label">Data Type:</span> <span>${arrayData.dtype}</span></div>
+                    <div class="meta-row"><span class="label">Shape:</span> <span>${JSON.stringify(shape)}</span></div>
+                </div>
+                
+                <div class='control-section'>
+                    <div class="meta-row control-row">
+                        <span class="label">Layout:</span> 
+                        <select id="layout-selector">${optionsHtml}</select>
+                    </div>
+
+                    <div class="meta-row control-row">
+                        <span class="label">Color Mode:</span> 
+                        <select id="mode-selector">
+                            <option value="auto" ${currentDisplayMode === 'auto' ? 'selected' : ''}>Auto</option>
+                            <option value="gray" ${currentDisplayMode === 'gray' ? 'selected' : ''}>Grayscale</option>
+                            <option value="rgb" ${currentDisplayMode === 'rgb' ? 'selected' : ''}>RGB</option>
+                        </select>
+                    </div>
+
+                    <div class="meta-row control-row">
+                        <span class="label">Channel Start:</span> 
+                        <div style="display:flex; align-items:center; gap:5px;">
+                            <input type="number" id="channel-start-input" class="small-input" 
+                                value="${currentChannelStart}" 
+                                min="0" 
+                                max="${maxChannelIndex}">
+                            <span id="channel-max-label" style="font-size: 0.8em; opacity: 0.7;">(0-${maxChannelIndex})</span>
+                        </div>
+                    </div>
                 </div>
             </div>
         `;
         container.appendChild(metadataDiv);
 
-        // Viewer Container
         const viewerContainer = document.createElement('div');
         viewerContainer.id = 'viewer-container';
         container.appendChild(viewerContainer);
 
-        // Event Listeners
+        // --- Event Listeners ---
+        const updateState = () => {
+             vscode.setState({ 
+                layout: currentLayout, 
+                batchIndex: currentBatchIndex,
+                displayMode: currentDisplayMode,
+                channelStart: currentChannelStart
+            });
+            renderContent();
+        };
+
+        // 4. 修改 Layout 监听器：Layout 改变 -> C 改变 -> Max 改变
         document.getElementById('layout-selector').addEventListener('change', (e) => {
             currentLayout = e.target.value;
-            currentBatchIndex = 0; // Reset batch index on layout change
+            currentBatchIndex = 0; 
 
-            vscode.setState({ layout: currentLayout, batchIndex: currentBatchIndex });
+            // 重新计算新的 C
+            const newDims = parseDimensions(globalArrayData.shape, currentLayout);
+            const newMax = Math.max(0, newDims.C - 1);
+            
+            // 更新 Input 的 Max 属性和提示文本
+            const channelInput = document.getElementById('channel-start-input');
+            const maxLabel = document.getElementById('channel-max-label');
+            
+            channelInput.setAttribute('max', newMax);
+            maxLabel.innerText = `(0-${newMax})`;
 
-            vscode.postMessage({ type: 'updateLayout', layout: currentLayout });
+            // 如果当前选中的值超过了新的最大值，自动修正
+            if (currentChannelStart > newMax) {
+                currentChannelStart = newMax;
+                channelInput.value = newMax;
+            }
 
-            renderContent();
+            updateState();
         });
 
-        // Initial Render
+        document.getElementById('mode-selector').addEventListener('change', (e) => {
+            currentDisplayMode = e.target.value;
+            updateState();
+        });
+
+        // 5. 修改 Input 监听器：强制检查 min/max
+        document.getElementById('channel-start-input').addEventListener('change', (e) => {
+            let val = parseInt(e.target.value);
+            const maxVal = parseInt(e.target.getAttribute('max')); // 获取当前的动态 max
+            
+            if (isNaN(val)) {val = 0;}
+            if (val < 0) {val = 0;}
+            if (val > maxVal) {val = maxVal;} // 限制最大值
+            
+            currentChannelStart = val;
+            e.target.value = val; // 更新 UI 回显
+            updateState();
+        });
+
         renderContent();
     }
 
@@ -259,108 +336,117 @@
         const rawData = arrayData.data;
         const dtype = arrayData.dtype;
 
-        // Calculate strides
-        // semanticStrides.B tells us how many flat-array steps to jump for 1 batch
         const strides = calculateSemanticStrides(arrayData.shape, layout);
         const strideB = strides['B'];
         const strideH = strides['H'];
         const strideW = strides['W'];
         const strideC = strides['C'];
 
-        // Calculate Base Offset for this specific image in the batch
         const batchOffset = batchIndex * strideB;
 
-        // Create Canvas
+        // --- 确定实际的显示模式 ---
+        let effectiveMode = currentDisplayMode;
+        if (effectiveMode === 'auto') {
+            effectiveMode = (C === 3 || C === 4) ? 'rgb' : 'gray';
+        }
+
+        // --- 确定要使用的通道 ---
+        // 如果 Layout 里没有 'C' (例如 'HW'), strideC 应该是 0, C 是 1
+        const startC = currentChannelStart;
+        
+        // --- Canvas Setup ---
         const canvas = document.createElement('canvas');
-        // Fit to screen logic
         const MAX_W = 600;
         const MAX_H = 600;
-        const scale = Math.min(MAX_W / W, MAX_H / H, 5); // Limit upscaling too
+        const scale = Math.min(MAX_W / W, MAX_H / H, 10); 
         
         canvas.width = W;
         canvas.height = H;
         canvas.style.width = `${W * scale}px`;
-        
         canvas.style.aspectRatio = `${W} / ${H}`;
         canvas.classList.add('numpy-canvas');
 
         const ctx = canvas.getContext('2d');
-        ctx.imageSmoothingEnabled = false;  // actually, only enabling features in css could also make it pixelated
         const imgData = ctx.createImageData(W, H);
 
-        // --- Normalization Setup ---
-        // Find Min/Max for contrast stretching (only if float or weird range)
-        // Optimization: For huge arrays, maybe only sample a subset or just use strict type limits?
-        // For now, let's just scan the *current slice* to be safe and accurate.
+        // --- 归一化逻辑 (Find Min/Max) ---
+        // 注意：为了正确的对比度，我们只应该扫描当前用户选择看到的那些通道
         let min = Infinity, max = -Infinity;
-        
-        // We need a helper to read values efficiently
         const isFloat = dtype.includes('float');
-        const isInt = dtype.includes('int');
-
-        // Note: Scanning logic also needs to respect strides to be accurate to the viewed image
-        // but for performance, we might skip full scan if we assume 0-1 or 0-255.
-        // Let's implement a robust scan for the current view.
         
         if (isFloat) {
-            // Quick scan of the visible slice
-            for (let h = 0; h < H; h += Math.max(1, Math.floor(H/50))) { // subsample for speed
-                for (let w = 0; w < W; w += Math.max(1, Math.floor(W/50))) {
-                    const c0 = rawData[batchOffset + h * strideH + w * strideW]; // Sample first channel
-                    if (c0 < min) {min = c0;}
-                    if (c0 > max) {max = c0;}
+            // 简单采样：只采中间的部分或者跳步采样，提高大图性能
+            const stepH = Math.max(1, Math.floor(H/50));
+            const stepW = Math.max(1, Math.floor(W/50));
+
+            for (let h = 0; h < H; h += stepH) {
+                for (let w = 0; w < W; w += stepW) {
+                    const pixelBase = batchOffset + h * strideH + w * strideW;
+                    
+                    if (effectiveMode === 'gray') {
+                        // 检查边界，防止读取越界
+                        if (startC < C) {
+                            const val = rawData[pixelBase + startC * strideC];
+                            if (val < min) {min = val;}
+                            if (val > max) {max = val;}
+                        }
+                    } else { // rgb
+                        for (let k = 0; k < 3; k++) {
+                            if (startC + k < C) {
+                                const val = rawData[pixelBase + (startC + k) * strideC];
+                                if (val < min) {min = val;}
+                                if (val > max) {max = val;}
+                            }
+                        }
+                    }
                 }
             }
-            // Fallback for flat image
             if (min === max) { min = 0; max = 1; }
+            if (min > 0 && max <= 1.0) { min = 0; max = 1; } // 0-1范围优化
         }
 
-        // --- Pixel Filling Loop ---
+        // --- 像素填充 ---
         for (let h = 0; h < H; h++) {
             for (let w = 0; w < W; w++) {
                 const canvasIdx = (h * W + w) * 4;
-                
-                // Calculate base index for this pixel (0th channel)
                 const pixelBaseIdx = batchOffset + h * strideH + w * strideW;
 
-                let r, g, b, a = 255;
+                let r = 0, g = 0, b = 0, a = 255;
 
-                if (C === 1) {
-                    // Grayscale
-                    let val = rawData[pixelBaseIdx]; // C stride is 0 or irrelevant here
-                    if (isFloat) {
-                         val = (val - min) / (max - min) * 255;
+                if (effectiveMode === 'gray') {
+                    // Gray: 拿 startC 这个通道
+                    let val = 0;
+                    if (startC < C) {
+                        val = rawData[pixelBaseIdx + startC * strideC];
                     }
+                    
+                    if (isFloat) {val = (val - min) / (max - min) * 255;}
                     r = g = b = val;
                 } else {
-                    // Color
-                    // We assume RGB or RGBA. 
-                    // Important: We need to handle if layout has 'C' but strideC jumps correctly
-                    
-                    let valR = rawData[pixelBaseIdx + 0 * strideC];
-                    let valG = rawData[pixelBaseIdx + 1 * strideC];
-                    let valB = rawData[pixelBaseIdx + 2 * strideC];
-                    
-                    if (isFloat) {
-                        // Assume 0-1 float for color, or use max/min if needed. 
-                        // Usually float RGB is 0.0-1.0
-                        if (max <= 1.05 && min >= -0.05) {
-                            valR *= 255; valG *= 255; valB *= 255;
-                        } else {
-                            valR = (valR - min) / (max - min) * 255;
-                            valG = (valG - min) / (max - min) * 255;
-                            valB = (valB - min) / (max - min) * 255;
+                    // RGB: 拿 startC, startC+1, startC+2
+                    let vals = [0, 0, 0]; // R, G, B
+                    for (let k = 0; k < 3; k++) {
+                        if (startC + k < C) {
+                            vals[k] = rawData[pixelBaseIdx + (startC + k) * strideC];
                         }
                     }
 
-                    r = valR;
-                    g = valG;
-                    b = valB;
+                    if (isFloat) {
+                        vals[0] = (vals[0] - min) / (max - min) * 255;
+                        vals[1] = (vals[1] - min) / (max - min) * 255;
+                        vals[2] = (vals[2] - min) / (max - min) * 255;
+                    }
+                    r = vals[0];
+                    g = vals[1];
+                    b = vals[2];
 
-                    if (C === 4) {
-                        let valA = rawData[pixelBaseIdx + 3 * strideC];
-                        if (isFloat && max <= 1.05) {valA *= 255;}
-                        a = valA;
+                    // Alpha Support? 如果是 RGBA 模式且刚好是4通道，可以考虑。
+                    // 但这里的需求是指定起始 Channel，为了简单，RGB模式下暂不处理Alpha，除非我们增加RGBA模式
+                    // 或者如果用户在start=0选了RGB且C=4，我们展示A。
+                    if (startC === 0 && C === 4) {
+                         let valA = rawData[pixelBaseIdx + 3 * strideC];
+                         if (isFloat && max <= 1.05) {valA *= 255;} 
+                         a = valA;
                     }
                 }
 
@@ -372,7 +458,6 @@
         }
 
         ctx.putImageData(imgData, 0, 0);
-        
         container.appendChild(canvas);
     }
 

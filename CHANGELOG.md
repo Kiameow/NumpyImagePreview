@@ -2,6 +2,14 @@
 
 All notable changes to the "Numpy Image Preview" extension will be documented in this file.
 
+## [1.0.9] - 2026-01-19
+### Added
+- add manually selecting start index of channel to support situation that channels may have mask information.
+
+## [1.0.8] - 2026-01-19
+### Changed
+- add credit in README
+
 ## [1.0.7] - 2026-01-19
 ### Added
 - extension now can remember preferred layout option to guarantee consistent experience
