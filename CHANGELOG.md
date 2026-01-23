@@ -8,7 +8,7 @@ All notable changes to the "Numpy Image Preview" extension will be documented in
 
 ### Fixed
 - low-contrast image display
-- global preference doesn't work
+- global preference doesn't work 
 
 ## [1.0.9] - 2026-01-21
 ### Added
