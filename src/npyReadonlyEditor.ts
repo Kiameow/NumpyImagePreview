@@ -79,7 +79,13 @@ export class npyReadonlyEditor implements vscode.CustomReadonlyEditorProvider {
         webviewPanel.webview.onDidReceiveMessage(message => {
             if (message.type === 'ready') {
                 if (document.arrayData) {
-                    const savedLayout = this.context.globalState.get<string>('npy-preview.preferredLayout');
+                    const rank = document.arrayData.shape.length;
+                
+                    // Fetch the preference SPECIFIC to this rank
+                    // Key example: "npy-preview.preferredLayout.rank3"
+                    const savedLayout = this.context.globalState.get<string>(
+                        `npy-preview.preferredLayout.rank${rank}`
+                    );
 
                     webviewPanel.webview.postMessage({
                         type: 'arrayData',
@@ -94,7 +100,12 @@ export class npyReadonlyEditor implements vscode.CustomReadonlyEditorProvider {
                 }
             } 
             else if (message.type === 'updateLayout') {
-                this.context.globalState.update('npy-preview.preferredLayout', message.layout);
+                if (message.rank && message.layout) {
+                    this.context.globalState.update(
+                        `npy-preview.preferredLayout.rank${message.rank}`, 
+                        message.layout
+                    );
+                }
             } 
             else {
                 console.log(`[${message.type}] ${message.info}`);

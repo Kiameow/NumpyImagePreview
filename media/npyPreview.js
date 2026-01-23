@@ -31,14 +31,38 @@
         switch (message.type) {
             case 'arrayData':
                 globalArrayData = message.data;
-                // renderArrayData(message.data);
-                if (!currentLayout) {
-                    if (message.preferredLayout) {
-                        currentLayout = message.preferredLayout;
-                    } else {
-                        currentLayout = guessLayout(globalArrayData.shape);
-                    }
+                const shape = globalArrayData.shape;
+                const rank = shape.length;
+                const supportedLayouts = getSupportedLayouts(rank);
+
+                // --- PRIORITY LOGIC START ---
+                
+                // 1. Check Local State (User explicitly set this before)
+                // We assume previousState.layout exists ONLY if user clicked it previously
+                if (previousState && previousState.layout) {
+                    currentLayout = previousState.layout;
+                    // Restore other states if they exist
+                    if (previousState.batchIndex !== undefined) {currentBatchIndex = previousState.batchIndex;}
+                    if (previousState.displayMode) {currentDisplayMode = previousState.displayMode;}
+                    if (previousState.channelStart !== undefined) {currentChannelStart = previousState.channelStart;}
+                } 
+                
+                // 2. Check Global Preference (Only if valid for this specific file shape)
+                else if (message.preferredLayout && supportedLayouts.includes(message.preferredLayout)) {
+                    currentLayout = message.preferredLayout;
+                    // Reset other states to defaults since this is effectively a "fresh" load
+                    currentBatchIndex = 0;
+                    currentChannelStart = 0;
+                } 
+                
+                // 3. Fallback to Guess
+                else {
+                    currentLayout = guessLayout(shape) || supportedLayouts[0];
+                    currentBatchIndex = 0;
+                    currentChannelStart = 0;
                 }
+                
+                // --- PRIORITY LOGIC END ---
 
                 initViewer(globalArrayData);
                 break;
@@ -228,6 +252,9 @@
             }
 
             updateState();
+
+            const rank = globalArrayData.shape.length;
+            vscode.postMessage({ type: 'updateLayout', layout: currentLayout, rank: rank  });
         });
 
         document.getElementById('mode-selector').addEventListener('change', (e) => {
@@ -304,18 +331,26 @@
         const slider = controls.querySelector('#batch-slider');
         const input = controls.querySelector('#index-input');
 
-        const updateBatch = (idx) => {
+        const updateUI = (idx) => {
             currentBatchIndex = idx;
-            vscode.setState({ layout: currentLayout, batchIndex: currentBatchIndex });
             canvasWrapper.innerHTML = '';
-            // Pass the batch index to the renderer
             renderCanvas(canvasWrapper, globalArrayData, currentLayout, currentBatchIndex, dims);
+        };
+
+        const saveState = () => {
+            vscode.setState({ 
+                layout: currentLayout, 
+                batchIndex: currentBatchIndex,
+                displayMode: currentDisplayMode,
+                channelStart: currentChannelStart 
+            });
         };
 
         slider.addEventListener('input', (e) => {
             const val = parseInt(e.target.value);
             input.value = val + 1;
-            updateBatch(val);
+            updateUI(val);
+            saveState();
         });
 
         input.addEventListener('change', (e) => {
@@ -323,147 +358,151 @@
             if (val < 0) {val = 0;}
             if (val >= B) {val = B - 1;}
             slider.value = val;
-            updateBatch(val);
+            updateUI(val);
+            saveState();
         });
 
         // Initial render for batch
-        updateBatch(currentBatchIndex);
+        updateUI(currentBatchIndex);
     }
 
     // Strided Rendering (Core)
     function renderCanvas(container, arrayData, layout, batchIndex, dims) {
-        const { H, W, C } = dims;
-        const rawData = arrayData.data;
-        const dtype = arrayData.dtype;
+    const { H, W, C } = dims;
+    const rawData = arrayData.data;
+    const dtype = arrayData.dtype; // We need dtype now to decide behavior
 
-        const strides = calculateSemanticStrides(arrayData.shape, layout);
-        const strideB = strides['B'];
-        const strideH = strides['H'];
-        const strideW = strides['W'];
-        const strideC = strides['C'];
+    // ... (Keep stride calculation and Canvas setup the same) ...
+    const strides = calculateSemanticStrides(arrayData.shape, layout);
+    const strideB = strides['B'], strideH = strides['H'], strideW = strides['W'], strideC = strides['C'];
+    const batchOffset = batchIndex * strideB;
+    
+    let effectiveMode = currentDisplayMode;
+    if (effectiveMode === 'auto') {effectiveMode = (C === 3 || C === 4) ? 'rgb' : 'gray';}
+    
+    const startC = currentChannelStart;
 
-        const batchOffset = batchIndex * strideB;
+    // Canvas Setup
+    const canvas = document.createElement('canvas');
+    const MAX_W = 600, MAX_H = 600;
+    const scale = Math.min(MAX_W / W, MAX_H / H, 10); 
+    canvas.width = W; canvas.height = H;
+    canvas.style.width = `${W * scale}px`; canvas.style.aspectRatio = `${W} / ${H}`;
+    canvas.classList.add('numpy-canvas');
+    const ctx = canvas.getContext('2d');
+    const imgData = ctx.createImageData(W, H);
 
-        // --- 确定实际的显示模式 ---
-        let effectiveMode = currentDisplayMode;
-        if (effectiveMode === 'auto') {
-            effectiveMode = (C === 3 || C === 4) ? 'rgb' : 'gray';
-        }
+    const toNum = (val) => (typeof val === 'bigint' ? Number(val) : val);
 
-        // --- 确定要使用的通道 ---
-        // 如果 Layout 里没有 'C' (例如 'HW'), strideC 应该是 0, C 是 1
-        const startC = currentChannelStart;
-        
-        // --- Canvas Setup ---
-        const canvas = document.createElement('canvas');
-        const MAX_W = 600;
-        const MAX_H = 600;
-        const scale = Math.min(MAX_W / W, MAX_H / H, 10); 
-        
-        canvas.width = W;
-        canvas.height = H;
-        canvas.style.width = `${W * scale}px`;
-        canvas.style.aspectRatio = `${W} / ${H}`;
-        canvas.classList.add('numpy-canvas');
+    // --- 1. Analyze Data Range (Min/Max) ---
+    // We still scan the data to detect if it's standard 0-1 float or weird scientific data
+    let min = Infinity, max = -Infinity;
+    
+    // Optimization: Skip steps for huge images to speed up analysis
+    const skipStep = (H * W > 2000 * 2000) ? 10 : 1;
 
-        const ctx = canvas.getContext('2d');
-        const imgData = ctx.createImageData(W, H);
-
-        // --- 归一化逻辑 (Find Min/Max) ---
-        // 注意：为了正确的对比度，我们只应该扫描当前用户选择看到的那些通道
-        let min = Infinity, max = -Infinity;
-        const isFloat = dtype.includes('float');
-        
-        if (isFloat) {
-            // 简单采样：只采中间的部分或者跳步采样，提高大图性能
-            const stepH = Math.max(1, Math.floor(H/50));
-            const stepW = Math.max(1, Math.floor(W/50));
-
-            for (let h = 0; h < H; h += stepH) {
-                for (let w = 0; w < W; w += stepW) {
-                    const pixelBase = batchOffset + h * strideH + w * strideW;
-                    
-                    if (effectiveMode === 'gray') {
-                        // 检查边界，防止读取越界
-                        if (startC < C) {
-                            const val = rawData[pixelBase + startC * strideC];
-                            if (val < min) {min = val;}
-                            if (val > max) {max = val;}
-                        }
-                    } else { // rgb
-                        for (let k = 0; k < 3; k++) {
-                            if (startC + k < C) {
-                                const val = rawData[pixelBase + (startC + k) * strideC];
-                                if (val < min) {min = val;}
-                                if (val > max) {max = val;}
-                            }
-                        }
+    for (let h = 0; h < H; h += skipStep) {
+        for (let w = 0; w < W; w += skipStep) {
+            const pixelBase = batchOffset + h * strideH + w * strideW;
+            if (effectiveMode === 'gray') {
+                if (startC < C) {
+                    let val = toNum(rawData[pixelBase + startC * strideC]);
+                    if (val < min) {min = val;}
+                    if (val > max) {max = val;}
+                }
+            } else { // rgb
+                for (let k = 0; k < 3; k++) {
+                    if (startC + k < C) {
+                        let val = toNum(rawData[pixelBase + (startC + k) * strideC]);
+                        if (val < min) {min = val;}
+                        if (val > max) {max = val;}
                     }
                 }
             }
-            if (min === max) { min = 0; max = 1; }
-            if (min > 0 && max <= 1.0) { min = 0; max = 1; } // 0-1范围优化
         }
-
-        const toNum = (val) => (typeof val === 'bigint' ? Number(val) : val);
-
-        // --- 像素填充 ---
-        for (let h = 0; h < H; h++) {
-            for (let w = 0; w < W; w++) {
-                const canvasIdx = (h * W + w) * 4;
-                const pixelBaseIdx = batchOffset + h * strideH + w * strideW;
-
-                let r = 0, g = 0, b = 0, a = 255;
-
-                if (effectiveMode === 'gray') {
-                    // Gray: 拿 startC 这个通道
-                    let val = 0;
-                    if (startC < C) {
-                        val = rawData[pixelBaseIdx + startC * strideC];
-                        val = toNum(val);
-                    }
-                    
-                    if (isFloat) {val = (val - min) / (max - min) * 255;}
-                    r = g = b = val;
-                } else {
-                    // RGB: 拿 startC, startC+1, startC+2
-                    let vals = [0, 0, 0]; // R, G, B
-                    for (let k = 0; k < 3; k++) {
-                        if (startC + k < C) {
-                            let rawVal = rawData[pixelBaseIdx + (startC + k) * strideC];
-                            vals[k] = toNum(rawVal);
-                        }
-                    }
-
-                    if (isFloat) {
-                        vals[0] = (vals[0] - min) / (max - min) * 255;
-                        vals[1] = (vals[1] - min) / (max - min) * 255;
-                        vals[2] = (vals[2] - min) / (max - min) * 255;
-                    }
-                    r = vals[0];
-                    g = vals[1];
-                    b = vals[2];
-
-                    // Alpha Support? 如果是 RGBA 模式且刚好是4通道，可以考虑。
-                    // 但这里的需求是指定起始 Channel，为了简单，RGB模式下暂不处理Alpha，除非我们增加RGBA模式
-                    // 或者如果用户在start=0选了RGB且C=4，我们展示A。
-                    if (startC === 0 && C === 4) {
-                         let valA = rawData[pixelBaseIdx + 3 * strideC];
-                         if (isFloat && max <= 1.05) {valA *= 255;} 
-                         a = valA;
-                    }
-                }
-
-                imgData.data[canvasIdx] = r;
-                imgData.data[canvasIdx + 1] = g;
-                imgData.data[canvasIdx + 2] = b;
-                imgData.data[canvasIdx + 3] = a;
-            }
-        }
-
-        ctx.putImageData(imgData, 0, 0);
-        container.appendChild(canvas);
     }
+
+    // --- 2. Decide Normalization Strategy ---
+    let useNormalization = false;
+    let normMin = 0;
+    let normRange = 1;
+
+    // CASE A: Standard RGB Image (uint8) -> No Normalization
+    if (effectiveMode === 'rgb' && dtype.includes('uint8')) {
+        useNormalization = false; 
+    } 
+    // CASE B: Standard Float Image (0.0 - 1.0) -> Scale 0-1 to 0-255, but don't stretch
+    else if (effectiveMode === 'rgb' && dtype.includes('float') && min >= 0 && max <= 1.0) {
+        useNormalization = true;
+        normMin = 0;
+        normRange = 1.0; // Fixed range 0..1
+    }
+    // CASE C: Everything else (Grayscale, Scientific RGB, uint16, Negative values)
+    // This catches your "low contrast grayscale" issue
+    else {
+        useNormalization = true;
+        // Handle flat images
+        if (min === max) { min -= 0.5; max += 0.5; }
+        normMin = min;
+        normRange = max - min;
+    }
+
+    // --- 3. Render Pixels ---
+    for (let h = 0; h < H; h++) {
+        for (let w = 0; w < W; w++) {
+            const canvasIdx = (h * W + w) * 4;
+            const pixelBaseIdx = batchOffset + h * strideH + w * strideW;
+
+            let r = 0, g = 0, b = 0, a = 255;
+
+            // Processor function based on strategy
+            const processVal = (val) => {
+                val = toNum(val);
+                if (useNormalization) {
+                    // Map [normMin, normMax] -> [0, 255]
+                    return ((val - normMin) / normRange) * 255;
+                }
+                return val; // Return raw (clamped by Uint8ClampedArray later)
+            };
+
+            if (effectiveMode === 'gray') {
+                let val = 0;
+                if (startC < C) {
+                    val = processVal(rawData[pixelBaseIdx + startC * strideC]);
+                }
+                r = g = b = val;
+            } else {
+                // RGB
+                let vals = [0, 0, 0];
+                for (let k = 0; k < 3; k++) {
+                    if (startC + k < C) {
+                        vals[k] = processVal(rawData[pixelBaseIdx + (startC + k) * strideC]);
+                    }
+                }
+                r = vals[0];
+                g = vals[1];
+                b = vals[2];
+
+                // Alpha (optional heuristic)
+                if (startC === 0 && C === 4) {
+                     let valA = toNum(rawData[pixelBaseIdx + 3 * strideC]);
+                     // Assume Alpha follows the same rule as colors
+                     if (useNormalization && normRange <= 1.0) {valA = valA * 255;}
+                     else if (useNormalization && normRange > 255) {valA = ((valA - normMin)/normRange) * 255;}
+                     a = valA;
+                }
+            }
+
+            imgData.data[canvasIdx] = r;
+            imgData.data[canvasIdx + 1] = g;
+            imgData.data[canvasIdx + 2] = b;
+            imgData.data[canvasIdx + 3] = a;
+        }
+    }
+
+    ctx.putImageData(imgData, 0, 0);
+    container.appendChild(canvas);
+}
 
     function displayError(message) {
         const container = document.getElementById('main');
