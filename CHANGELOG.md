@@ -1,8 +1,16 @@
 # Change Log
 
 All notable changes to the "Numpy Image Preview" extension will be documented in this file.
+## [1.1.0] - 2026-01-23
+### Optimized
+- use TypedArray to speed up loading image.
+- switching tab won't trigger reloading.
 
-## [1.0.9] - 2026-01-19
+### Fixed
+- low-contrast image display
+- global preference doesn't work
+
+## [1.0.9] - 2026-01-21
 ### Added
 - add manually selecting start index of channel to support situation that channels may have mask information.
 
