@@ -1,5 +1,4 @@
 import * as fs from 'fs';
-import * as path from 'path';
 
 // NumPy dtype mapping
 const NUMPY_DTYPES = {
@@ -83,12 +82,12 @@ export class NpyFileParser {
             }
 
             // Extract data
-            const dataStart = 10 + headerLength;
+            const dataOffset = 10 + headerLength;
             const data = this.extractDataToFlatArray(
-                buffer.slice(dataStart), 
+                buffer,
+                dataOffset,
                 dtypeInfo, 
-                shape, 
-                fortranOrder
+                shape
             );
 
             return {
@@ -224,120 +223,88 @@ export class NpyFileParser {
      */
     private static extractDataToFlatArray(
         buffer: Buffer, 
+        offset: number,
         dtypeInfo: any, 
-        shape: number[], 
-        fortranOrder: boolean
-    ): any[] {
+        shape: number[]
+    ): any {
         const totalElements = shape.reduce((a, b) => a * b, 1);
-        const result: any[] = new Array(totalElements);
+        
+        // Slice the buffer to the data section
+        // Note: We use .subarray() to create a view, then .slice() to ensure memory alignment 
+        // and detach it from the original file buffer to let GC clean up the file buffer if needed.
+        // Copying the slice is safer for TypedArray alignment requirements (e.g. Float32 must start at multiple of 4).
+        const rawDataBuffer = buffer.subarray(offset).buffer.slice(buffer.byteOffset + offset);
 
-        // Read data based on dtype
-        for (let i = 0; i < totalElements; i++) {
-            const offset = i * dtypeInfo.size;
-            
+        const isLittleEndianSystem = true; // Node.js/V8 is almost always LE
+        const isLittleEndianFile = dtypeInfo.endian !== 'big'; // Default is little ('<') or 'pipe' ('|')
+
+        // 1. FAST PATH: Direct TypedArray mapping
+        // If the file endianness matches system endianness (usually true), we don't need to loop.
+        if (isLittleEndianSystem === isLittleEndianFile) {
             switch (dtypeInfo.name) {
-                // Floating point types
-                case 'float32':
-                    result[i] = buffer.readFloatLE(offset);
-                    break;
-                case 'float32_be':
-                    result[i] = buffer.readFloatBE(offset);
-                    break;
-                case 'float64':
-                    result[i] = buffer.readDoubleLE(offset);
-                    break;
-                case 'float64_be':
-                    result[i] = buffer.readDoubleBE(offset);
-                    break;
-
-                // Signed integers
-                case 'int8':
-                    result[i] = buffer.readInt8(offset);
-                    break;
-                case 'int16':
-                    result[i] = buffer.readInt16LE(offset);
-                    break;
-                case 'int16_be':
-                    result[i] = buffer.readInt16BE(offset);
-                    break;
-                case 'int32':
-                    result[i] = buffer.readInt32LE(offset);
-                    break;
-                case 'int32_be':
-                    result[i] = buffer.readInt32BE(offset);
-                    break;
-                case 'int64':
-                    result[i] = buffer.readBigInt64LE(offset);
-                    break;
-                case 'int64_be':
-                    result[i] = buffer.readBigInt64BE(offset);
-                    break;
-
-                // Unsigned integers
-                case 'uint8':
-                    result[i] = buffer.readUint8(offset);
-                    break;
-                case 'uint16':
-                    result[i] = buffer.readUint16LE(offset);
-                    break;
-                case 'uint16_be':
-                    result[i] = buffer.readUint16BE(offset);
-                    break;
-                case 'uint32':
-                    result[i] = buffer.readUInt32LE(offset);
-                    break;
-                case 'uint32_be':
-                    result[i] = buffer.readUInt32BE(offset);
-                    break;
-                case 'uint64':
-                    result[i] = buffer.readBigUInt64LE(offset);
-                    break;
-                case 'uint64_be':
-                    result[i] = buffer.readBigUInt64BE(offset);
-                    break;
-
-                // Boolean
-                case 'bool':
-                    result[i] = buffer.readUint8(offset) !== 0;
-                    break;
-
-                // Complex types
-                case 'complex64':
-                    result[i] = {
-                        real: buffer.readFloatLE(offset),
-                        imag: buffer.readFloatLE(offset + 4)
-                    };
-                    break;
-                case 'complex64_be':
-                    result[i] = {
-                        real: buffer.readFloatBE(offset),
-                        imag: buffer.readFloatBE(offset + 4)
-                    };
-                    break;
-                case 'complex128':
-                    result[i] = {
-                        real: buffer.readDoubleLE(offset),
-                        imag: buffer.readDoubleLE(offset + 8)
-                    };
-                    break;
-                case 'complex128_be':
-                    result[i] = {
-                        real: buffer.readDoubleBE(offset),
-                        imag: buffer.readDoubleBE(offset + 8)
-                    };
-                    break;
-
-                // String (basic support)
-                case 'string':
-                    // Assuming fixed-length string, might need more sophisticated parsing
-                    result[i] = buffer.toString('utf8', offset, offset + 1);
-                    break;
-
-                default:
-                    throw new Error(`Unsupported dtype: ${dtypeInfo.name}`);
+                case 'float32': return new Float32Array(rawDataBuffer);
+                case 'float64': return new Float64Array(rawDataBuffer);
+                case 'int8':    return new Int8Array(rawDataBuffer);
+                case 'int16':   return new Int16Array(rawDataBuffer);
+                case 'int32':   return new Int32Array(rawDataBuffer);
+                case 'uint8':   return new Uint8Array(rawDataBuffer);
+                case 'uint16':  return new Uint16Array(rawDataBuffer);
+                case 'uint32':  return new Uint32Array(rawDataBuffer);
+                // BigInt support (modern browsers/node support this)
+                case 'int64':   return new BigInt64Array(rawDataBuffer);
+                case 'uint64':  return new BigUint64Array(rawDataBuffer);
+                case 'bool':    return new Uint8Array(rawDataBuffer); // Represent bool as bytes
             }
         }
-        return result;
+
+        // 2. SLOW PATH: Endianness mismatch or Complex numbers
+        // If we have Big Endian data on Little Endian CPU, or Complex numbers, we fall back to DataView loops.
+        // This effectively copies your old extractDataToFlatArray logic but returns TypedArrays where possible.
+        
+        const view = new DataView(rawDataBuffer);
+        
+        // Helper to create the right array type
+        let result: any;
+        
+        switch(dtypeInfo.name) {
+             // Floats (Big Endian fallback)
+            case 'float32_be': 
+                result = new Float32Array(totalElements);
+                for(let i=0; i<totalElements; i++) {result[i] = view.getFloat32(i*4, false);} // false = Big Endian
+                return result;
+            case 'float64_be': 
+                result = new Float64Array(totalElements);
+                for(let i=0; i<totalElements; i++) {result[i] = view.getFloat64(i*8, false);}
+                return result;
+            
+            // Integers (Big Endian fallback)
+            case 'int16_be':
+                result = new Int16Array(totalElements);
+                for(let i=0; i<totalElements; i++) {result[i] = view.getInt16(i*2, false);}
+                return result;
+            case 'int32_be':
+                result = new Int32Array(totalElements);
+                for(let i=0; i<totalElements; i++) {result[i] = view.getInt32(i*4, false);}
+                return result;
+                
+            // Complex Numbers (Must remain standard Arrays of objects, TypedArrays don't support objects)
+            case 'complex64':
+            case 'complex64_be':
+                const isLE64 = dtypeInfo.name === 'complex64';
+                result = new Array(totalElements);
+                for (let i = 0; i < totalElements; i++) {
+                    result[i] = {
+                        real: view.getFloat32(i * 8, isLE64),
+                        imag: view.getFloat32(i * 8 + 4, isLE64)
+                    };
+                }
+                return result;
+
+            // ... You can add other Big Endian fallbacks here if needed ...
+            
+            default:
+                throw new Error(`Unsupported dtype: ${dtypeInfo.name}`);
+        }
     }
 
     /**

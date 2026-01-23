@@ -1,10 +1,26 @@
 import * as vscode from 'vscode';
 import { NpyFileParser } from './npyFileParser'; 
 
+// Define a custom document interface to hold the parsed data
+interface NpyDocument extends vscode.CustomDocument {
+    arrayData: any;
+}
+
 export class npyReadonlyEditor implements vscode.CustomReadonlyEditorProvider {
     public static register(context: vscode.ExtensionContext): vscode.Disposable {
 		const provider = new npyReadonlyEditor(context);
-		const providerRegistration = vscode.window.registerCustomEditorProvider(npyReadonlyEditor.viewType, provider);
+		
+        const providerRegistration = vscode.window.registerCustomEditorProvider(
+            npyReadonlyEditor.viewType,
+            provider,
+            {
+                webviewOptions: {
+                    retainContextWhenHidden: true
+                },
+                supportsMultipleEditorsPerDocument: true
+            }
+        );
+
 		return providerRegistration;
 	}
 
@@ -18,15 +34,28 @@ export class npyReadonlyEditor implements vscode.CustomReadonlyEditorProvider {
         uri: vscode.Uri, 
         openContext: vscode.CustomDocumentOpenContext, 
         token: vscode.CancellationToken
-    ): vscode.CustomDocument | Thenable<vscode.CustomDocument> {
+    ): NpyDocument | Thenable<NpyDocument> {
+        let arrayData;
+        try {
+            // Parse here so the data is attached to the document lifecycle, not the view lifecycle
+            arrayData = NpyFileParser.parseNpyFile(uri.fsPath);
+        } catch (error) {
+            console.error('Error parsing NPY file:', error);
+            arrayData = null;
+        }
+
         return {
             uri,
-            dispose: () => {} // Cleanup method if needed
+            arrayData, // Store data in the document object
+            dispose: () => {
+                // Clear large data from memory when file is closed
+                arrayData = null; 
+            }
         };
     }
 
     resolveCustomEditor(
-        document: vscode.CustomDocument, 
+        document: NpyDocument, 
         webviewPanel: vscode.WebviewPanel, 
         token: vscode.CancellationToken
     ): void {
@@ -38,23 +67,23 @@ export class npyReadonlyEditor implements vscode.CustomReadonlyEditorProvider {
         // Render HTML
         webviewPanel.webview.html = this.getHtmlForWebview(webviewPanel.webview, document.uri);
 
-        let arrayData;
-        try {
-            arrayData = NpyFileParser.parseNpyFile(document.uri.fsPath);
-        } catch (error) {
-            console.error('Error parsing NPY file:', error);
-            arrayData = null;
-        }
+        // let arrayData;
+        // try {
+        //     arrayData = NpyFileParser.parseNpyFile(document.uri.fsPath);
+        // } catch (error) {
+        //     console.error('Error parsing NPY file:', error);
+        //     arrayData = null;
+        // }
 
         // Always attempt to send data, even if cached or newly parsed
         webviewPanel.webview.onDidReceiveMessage(message => {
             if (message.type === 'ready') {
-                if (arrayData) {
+                if (document.arrayData) {
                     const savedLayout = this.context.globalState.get<string>('npy-preview.preferredLayout');
 
                     webviewPanel.webview.postMessage({
                         type: 'arrayData',
-                        data: arrayData,
+                        data: document.arrayData,
                         preferredLayout: savedLayout
                     });
                 } else {

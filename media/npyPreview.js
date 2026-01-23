@@ -405,6 +405,8 @@
             if (min > 0 && max <= 1.0) { min = 0; max = 1; } // 0-1范围优化
         }
 
+        const toNum = (val) => (typeof val === 'bigint' ? Number(val) : val);
+
         // --- 像素填充 ---
         for (let h = 0; h < H; h++) {
             for (let w = 0; w < W; w++) {
@@ -418,6 +420,7 @@
                     let val = 0;
                     if (startC < C) {
                         val = rawData[pixelBaseIdx + startC * strideC];
+                        val = toNum(val);
                     }
                     
                     if (isFloat) {val = (val - min) / (max - min) * 255;}
@@ -427,7 +430,8 @@
                     let vals = [0, 0, 0]; // R, G, B
                     for (let k = 0; k < 3; k++) {
                         if (startC + k < C) {
-                            vals[k] = rawData[pixelBaseIdx + (startC + k) * strideC];
+                            let rawVal = rawData[pixelBaseIdx + (startC + k) * strideC];
+                            vals[k] = toNum(rawVal);
                         }
                     }
 
